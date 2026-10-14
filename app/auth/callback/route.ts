@@ -15,15 +15,18 @@ export async function GET(request: NextRequest) {
   const authError = searchParams.get("error");
   const authErrorDescription = searchParams.get("error_description");
 
-  // Determine base origin (support reverse proxy / x-forwarded-host)
+  // Determine base origin (support Netlify deployment, reverse proxy, and local dev)
+  const siteUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.NODE_ENV === "production" ? "https://quotematchai.netlify.app" : "");
+
   const forwardedHost = request.headers.get("x-forwarded-host");
   const forwardedProto = request.headers.get("x-forwarded-proto") || "https";
   const isLocalEnv = process.env.NODE_ENV === "development";
   const baseOrigin = isLocalEnv
     ? origin
-    : forwardedHost
-    ? `${forwardedProto}://${forwardedHost}`
-    : origin;
+    : siteUrl || (forwardedHost ? `${forwardedProto}://${forwardedHost}` : origin);
 
   if (authError || authErrorDescription) {
     const errorUrl = new URL("/login", baseOrigin);

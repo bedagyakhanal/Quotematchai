@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { APP_NAME, IS_MOCK_MODE } from "@/lib/config";
+import { APP_NAME, APP_URL, IS_MOCK_MODE } from "@/lib/config";
 import { useProfile } from "@/hooks/useProfile";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -140,7 +140,11 @@ function LoginContent() {
     try {
       if (!IS_MOCK_MODE) {
         const supabase = createBrowserSupabaseClient();
-        const callbackUrl = new URL("/auth/callback", window.location.origin);
+        const origin =
+          typeof window !== "undefined" && window.location.origin
+            ? window.location.origin
+            : APP_URL;
+        const callbackUrl = new URL("/auth/callback", origin);
         if (nextUrl && nextUrl !== "/") {
           callbackUrl.searchParams.set("next", nextUrl);
         }
@@ -190,7 +194,11 @@ function LoginContent() {
     try {
       if (!IS_MOCK_MODE) {
         const supabase = createBrowserSupabaseClient();
-        const callbackUrl = new URL("/auth/callback", window.location.origin);
+        const origin =
+          typeof window !== "undefined" && window.location.origin
+            ? window.location.origin
+            : APP_URL;
+        const callbackUrl = new URL("/auth/callback", origin);
         callbackUrl.searchParams.set("next", "/reset-password");
 
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {

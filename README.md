@@ -51,13 +51,20 @@ cp .env.example .env.local
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) (or live at [https://quotematchai.netlify.app](https://quotematchai.netlify.app)).
+
+---
+
+## Production Deployment
+
+- **Live Production URL**: [https://quotematchai.netlify.app](https://quotematchai.netlify.app)
+- **Sign In**: [https://quotematchai.netlify.app/login](https://quotematchai.netlify.app/login)
 
 ---
 
 ## How Mock Mode Works
 
-When `NEXT_PUBLIC_USE_MOCKS=true` (the default), all network requests are serviced by the in-memory database (`lib/mocks/db.ts`) and mock handler (`lib/mocks/handlers.ts`) with **300ms–700ms realistic network jitter**.
+When `NEXT_PUBLIC_USE_MOCKS=true`, all network requests are serviced by the in-memory database (`lib/mocks/db.ts`) and mock handler (`lib/mocks/handlers.ts`) with **300ms–700ms realistic network jitter**.
 
 ### Seed Data
 
@@ -70,7 +77,7 @@ The mock database includes:
 - **RFQ 3 (`rfq_3`)**: Already awarded with winner banner (Rapid Logistics won at $450)
 
 #### Live Supabase Test Accounts (`NEXT_PUBLIC_USE_MOCKS=false`)
-When running against the real Supabase backend, sign in using the **Password** tab at [http://localhost:3000/login](http://localhost:3000/login) with:
+When running against the real Supabase backend, sign in using the **Password** tab at [https://quotematchai.netlify.app/login](https://quotematchai.netlify.app/login) (or [http://localhost:3000/login](http://localhost:3000/login)) with:
 
 | Role | Work Email | Password | Display Name / Company |
 | :--- | :--- | :--- | :--- |
@@ -81,10 +88,10 @@ When running against the real Supabase backend, sign in using the **Password** t
 ### Testing Failure Modes & Edge Cases
 You can test resilient UI states at any time by appending `?mockFail=<mode>` to the URL or via the browser console:
 
-- **AI Parsing Timeout**: `http://localhost:3000/buyer/new?mockFail=ai_timeout`
-- **Rate Limiting (with countdown)**: `http://localhost:3000/buyer/new?mockFail=rate_limited`
-- **AI Parse Failed**: `http://localhost:3000/buyer/new?mockFail=ai_parse_failed`
-- **Network Disconnection / Offline**: `http://localhost:3000/buyer/new?mockFail=offline`
+- **AI Parsing Timeout**: `/buyer/new?mockFail=ai_timeout`
+- **Rate Limiting (with countdown)**: `/buyer/new?mockFail=rate_limited`
+- **AI Parse Failed**: `/buyer/new?mockFail=ai_parse_failed`
+- **Network Disconnection / Offline**: `/buyer/new?mockFail=offline`
 
 ---
 
