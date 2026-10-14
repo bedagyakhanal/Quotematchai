@@ -47,6 +47,50 @@ function LoginContent() {
     return () => clearInterval(interval);
   }, [resendCooldown]);
 
+  // Check for error parameters passed back from auth callback / magic link
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    const errorDesc = searchParams.get("error_description");
+    if (errorDesc) {
+      toast.error(errorDesc);
+    } else if (errorParam) {
+      toast.error("Authentication link expired or invalid. Please request a new one.");
+    }
+  }, [searchParams]);
+
+  // Listen for active Supabase auth events (including magic link tokens parsed from URL hash)
+  useEffect(() => {
+    if (IS_MOCK_MODE) return;
+    const supabase = createBrowserSupabaseClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session?.user) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
+        queryClient.invalidateQueries({ queryKey: queryKeys.profile });
+
+        if (nextUrl && nextUrl !== "/") {
+          router.push(nextUrl);
+        } else if (prof?.role === "buyer") {
+          router.push("/buyer");
+        } else if (prof?.role === "seller") {
+          router.push("/seller");
+        } else {
+          router.push("/onboarding/role");
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [nextUrl, queryClient, router]);
+
   // If already authenticated with a role, redirect to appropriate destination
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -94,12 +138,16 @@ function LoginContent() {
     try {
       if (!IS_MOCK_MODE) {
         const supabase = createBrowserSupabaseClient();
+        const callbackUrl = new URL("/auth/callback", window.location.origin);
+        if (nextUrl && nextUrl !== "/") {
+          callbackUrl.searchParams.set("next", nextUrl);
+        }
+
         const { error } = await supabase.auth.signInWithOtp({
           email: email.trim(),
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
-              nextUrl
-            )}`,
+            emailRedirectTo: callbackUrl.toString(),
+            shouldCreateUser: true,
           },
         });
         if (error) throw error;
@@ -111,7 +159,14 @@ function LoginContent() {
       setResendCooldown(60);
       toast.success("Magic link sent! Check your inbox.");
     } catch (err: any) {
-      toast.error(err?.message || "Could not send magic link. Please check your connection.");
+      const msg = err?.message || "Could not send magic link. Please check your connection.";
+      if (err?.code === "over_email_send_rate_limit" || msg.toLowerCase().includes("rate limit")) {
+        setEmailError("Email rate limit reached. Please wait a few minutes or switch to the Password tab.");
+        toast.error("Email rate limit reached. You can sign in with your password in the meantime.");
+      } else {
+        setEmailError(msg);
+        toast.error(msg);
+      }
     } finally {
       setIsSubmitting(false);
     }
