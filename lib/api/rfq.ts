@@ -61,3 +61,13 @@ export async function selectWinner(rfqId: string, bidId: string): Promise<RFQ> {
     body: JSON.stringify({ bidId }),
   });
 }
+
+/**
+ * Buyer closes their open RFQ without awarding a winner.
+ */
+export async function closeRfq(rfqId: string): Promise<RFQ> {
+  return request<RFQ>(`/api/rfq/${encodeURIComponent(rfqId)}/close`, {
+    method: "POST",
+  });
+}
+
