@@ -186,7 +186,12 @@ When a supplier edits a bid at the exact moment a buyer awards an RFQ, PostgreSQ
 | `POST /api/rfq/[id]/select-winner` | Buyer (Owner) | Calls `select_winner` RPC; idempotent award action. |
 | `POST /api/rfq/[id]/close` | Buyer (Owner) | Calls `close_rfq` RPC; closes RFQ without selecting a winner. |
 
+### Known Residual Risks
+- **`close_rfq` Endpoint**: Probed and confirmed present on the live Supabase RPC interface with parameter `p_rfq_id`, but end-to-end route execution remains untested via user click-through.
+- **Deadlock Recovery (`40P01`)**: Exception mapping and single jittered retry logic verified via in-memory unit tests; physical lock collision under concurrent multi-connection PostgreSQL transactions remains simulated rather than tested live.
+
 ---
+
 
 ## The AI RFQ-Parsing Engine
 
