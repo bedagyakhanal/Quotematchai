@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { APP_NAME } from "@/lib/config";
+import { APP_NAME, IS_MOCK_MODE } from "@/lib/config";
 import { useProfile } from "@/hooks/useProfile";
+import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
 function LoginContent() {
   const router = useRouter();
@@ -86,13 +87,26 @@ function LoginContent() {
 
     setIsSubmitting(true);
     try {
-      // Simulate or call magic link dispatch
-      await new Promise((r) => setTimeout(r, 600));
+      if (!IS_MOCK_MODE) {
+        const supabase = createBrowserSupabaseClient();
+        const { error } = await supabase.auth.signInWithOtp({
+          email: email.trim(),
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+              nextUrl
+            )}`,
+          },
+        });
+        if (error) throw error;
+      } else {
+        await new Promise((r) => setTimeout(r, 600));
+      }
+
       setMagicLinkSent(true);
       setResendCooldown(60);
       toast.success("Magic link sent! Check your inbox.");
-    } catch {
-      toast.error("Could not send magic link. Please check your connection.");
+    } catch (err: any) {
+      toast.error(err?.message || "Could not send magic link. Please check your connection.");
     } finally {
       setIsSubmitting(false);
     }
@@ -104,16 +118,33 @@ function LoginContent() {
 
     setIsSubmitting(true);
     try {
-      // Simulate auth resolution
-      await new Promise((r) => setTimeout(r, 600));
+      if (!IS_MOCK_MODE) {
+        const supabase = createBrowserSupabaseClient();
+        if (isSignUp) {
+          const { error } = await supabase.auth.signUp({
+            email: email.trim(),
+            password,
+          });
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          });
+          if (error) throw error;
+        }
+      } else {
+        await new Promise((r) => setTimeout(r, 600));
+      }
+
       toast.success(isSignUp ? "Account created successfully!" : "Signed in successfully!");
       if (nextUrl && nextUrl !== "/") {
         router.push(nextUrl);
       } else {
         router.push(role === "buyer" ? "/buyer" : role === "seller" ? "/seller" : "/onboarding/role");
       }
-    } catch {
-      setPasswordError("Incorrect email or password. Please try again.");
+    } catch (err: any) {
+      setPasswordError(err?.message || "Incorrect email or password. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

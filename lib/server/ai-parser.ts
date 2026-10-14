@@ -138,6 +138,53 @@ async function callAnthropic(
 }
 
 /**
+ * Calls Google Gemini generateContent API with a 12s hard timeout.
+ */
+async function callGemini(
+  apiKey: string,
+  systemPrompt: string,
+  contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }>,
+  signal: AbortSignal
+): Promise<string> {
+  const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        contents,
+        generationConfig: {
+          temperature: 0,
+          responseMimeType: "application/json",
+        },
+      }),
+      signal,
+    }
+  );
+
+  if (!res.ok) {
+    const errorBody = await res.text().catch(() => "");
+    console.error("[Gemini Error]", { status: res.status, body: errorBody });
+    throw new Error(`Gemini API returned status ${res.status}: ${errorBody}`);
+  }
+
+  const json = await res.json();
+  const content = json.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!content) {
+    throw new Error("Gemini returned empty candidate content");
+  }
+  return content;
+}
+
+/**
  * Deterministic heuristic parser for local testing when no AI API key is configured.
  */
 function localFallbackParser(text: string): ParsedRfqDraft {
@@ -259,11 +306,15 @@ function localFallbackParser(text: string): ParsedRfqDraft {
  * Enforces 12-second timeout, system prompt, temperature: 0, and single corrective retry.
  */
 export async function parseRfqWithAI(rawText: string): Promise<ParsedRfqDraft> {
+  const geminiApiKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   const openaiApiKey = process.env.OPENAI_API_KEY;
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 
   // Use local heuristic parser if no provider API key is configured
-  if (!openaiApiKey && !anthropicApiKey) {
+  if (!geminiApiKey && !openaiApiKey && !anthropicApiKey) {
     return localFallbackParser(rawText);
   }
 
@@ -273,14 +324,19 @@ export async function parseRfqWithAI(rawText: string): Promise<ParsedRfqDraft> {
 
   try {
     let rawOutput = "";
-    const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    const openAiMessages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
       { role: "system", content: systemPrompt },
       { role: "user", content: rawText },
     ];
+    const geminiContents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [
+      { role: "user", parts: [{ text: rawText }] },
+    ];
 
     try {
-      if (openaiApiKey) {
-        rawOutput = await callOpenAI(openaiApiKey, messages, controller.signal);
+      if (geminiApiKey) {
+        rawOutput = await callGemini(geminiApiKey, systemPrompt, geminiContents, controller.signal);
+      } else if (openaiApiKey) {
+        rawOutput = await callOpenAI(openaiApiKey, openAiMessages, controller.signal);
       } else if (anthropicApiKey) {
         rawOutput = await callAnthropic(
           anthropicApiKey,
@@ -322,10 +378,14 @@ export async function parseRfqWithAI(rawText: string): Promise<ParsedRfqDraft> {
 
       let retryOutput = "";
       try {
-        if (openaiApiKey) {
-          messages.push({ role: "assistant", content: rawOutput });
-          messages.push({ role: "user", content: correctiveMessage });
-          retryOutput = await callOpenAI(openaiApiKey, messages, controller.signal);
+        if (geminiApiKey) {
+          geminiContents.push({ role: "model", parts: [{ text: rawOutput }] });
+          geminiContents.push({ role: "user", parts: [{ text: correctiveMessage }] });
+          retryOutput = await callGemini(geminiApiKey, systemPrompt, geminiContents, controller.signal);
+        } else if (openaiApiKey) {
+          openAiMessages.push({ role: "assistant", content: rawOutput });
+          openAiMessages.push({ role: "user", content: correctiveMessage });
+          retryOutput = await callOpenAI(openaiApiKey, openAiMessages, controller.signal);
         } else if (anthropicApiKey) {
           retryOutput = await callAnthropic(
             anthropicApiKey,

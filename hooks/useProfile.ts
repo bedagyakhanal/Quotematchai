@@ -50,7 +50,11 @@ export function useProfile() {
   const signOut = async () => {
     try {
       if (IS_MOCK_MODE) {
-        // In mock mode, we can clear or reset user session
+        queryClient.setQueryData(queryKeys.profile, null);
+      } else {
+        const { createBrowserSupabaseClient } = await import("@/lib/supabase/client");
+        const supabase = createBrowserSupabaseClient();
+        await supabase.auth.signOut();
         queryClient.setQueryData(queryKeys.profile, null);
       }
       queryClient.clear();
