@@ -28,6 +28,8 @@ export function useSpeechInput({
   const recognitionRef = useRef<any>(null);
   const isExplicitStopRef = useRef<boolean>(false);
   const onTranscriptAppendRef = useRef(onTranscriptAppend);
+  const latestInterimRef = useRef<string>("");
+  const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     onTranscriptAppendRef.current = onTranscriptAppend;
@@ -60,6 +62,10 @@ export function useSpeechInput({
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (stopTimeoutRef.current) {
+        clearTimeout(stopTimeoutRef.current);
+        stopTimeoutRef.current = null;
+      }
       if (recognitionRef.current) {
         try {
           recognitionRef.current.abort();
@@ -86,6 +92,11 @@ export function useSpeechInput({
       return;
     }
 
+    if (stopTimeoutRef.current) {
+      clearTimeout(stopTimeoutRef.current);
+      stopTimeoutRef.current = null;
+    }
+
     // Abort any existing instance before creating a new one
     if (recognitionRef.current) {
       try {
@@ -96,6 +107,7 @@ export function useSpeechInput({
       recognitionRef.current = null;
     }
 
+    latestInterimRef.current = "";
     setErrorMessage(null);
     setSpeechState("requesting");
     isExplicitStopRef.current = false;
@@ -126,12 +138,11 @@ export function useSpeechInput({
           }
         }
 
+        latestInterimRef.current = currentInterim;
         setInterimTranscript(currentInterim);
       };
 
       recognition.onerror = (event: any) => {
-        // "no-speech" occurs during silence in continuous recognition.
-        // Ignore it if the user is still in listening mode so session isn't killed.
         if (event.error === "no-speech") {
           setInterimTranscript("");
           return;
@@ -168,12 +179,22 @@ export function useSpeechInput({
       };
 
       recognition.onend = () => {
+        // Flush any unfinalized speech buffer into transcript
+        if (latestInterimRef.current.trim() && onTranscriptAppendRef.current) {
+          onTranscriptAppendRef.current(latestInterimRef.current.trim());
+        }
+        latestInterimRef.current = "";
         setInterimTranscript("");
-        setSpeechState((prev) =>
-          prev === "listening" || prev === "requesting" ? "idle" : prev
-        );
+
+        // Return to idle state unless an error occurred
+        setSpeechState((prev) => (prev === "error" ? "error" : "idle"));
         recognitionRef.current = null;
         isExplicitStopRef.current = false;
+
+        if (stopTimeoutRef.current) {
+          clearTimeout(stopTimeoutRef.current);
+          stopTimeoutRef.current = null;
+        }
       };
 
       recognitionRef.current = recognition;
@@ -192,8 +213,31 @@ export function useSpeechInput({
       setSpeechState("idle");
       return;
     }
+
     isExplicitStopRef.current = true;
     setSpeechState("processing");
+
+    // Safety timeout: ensure we never remain stuck in "processing" if onend fails to fire
+    if (stopTimeoutRef.current) {
+      clearTimeout(stopTimeoutRef.current);
+    }
+    stopTimeoutRef.current = setTimeout(() => {
+      if (latestInterimRef.current.trim() && onTranscriptAppendRef.current) {
+        onTranscriptAppendRef.current(latestInterimRef.current.trim());
+      }
+      latestInterimRef.current = "";
+      setInterimTranscript("");
+      setSpeechState("idle");
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {
+          // ignore
+        }
+        recognitionRef.current = null;
+      }
+    }, 1200);
+
     try {
       recognitionRef.current.stop();
     } catch {
