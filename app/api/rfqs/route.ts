@@ -36,7 +36,8 @@ export async function GET(req: NextRequest) {
         created_at: row.created_at,
         bid_count: Number(row.bid_count || 0),
         lowest_price: row.lowest_price !== null ? Number(row.lowest_price) : null,
-        winner_bid_id: row.winner_bid_id,
+        winner_bid_id: row.winner_bid_id || row.winning_bid_id || null,
+        winning_bid_id: row.winner_bid_id || row.winning_bid_id || null,
         winning_seller_name: row.winning_seller_name,
         winning_price: row.winning_price !== null ? Number(row.winning_price) : null,
       }));

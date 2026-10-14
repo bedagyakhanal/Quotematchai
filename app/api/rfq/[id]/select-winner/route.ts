@@ -80,21 +80,33 @@ export async function POST(
     // Look up winning bid to get seller_name and price
     let winningSellerName: string | undefined;
     let winningPrice: number | null = null;
+    const winnerBidId = updatedRfqRow.winner_bid_id || updatedRfqRow.winning_bid_id || bidId;
 
-    const { data: winBid } = await supabase
-      .from("bids")
-      .select("price, seller_id")
-      .eq("id", bidId)
-      .maybeSingle();
+    if (winnerBidId) {
+      const { data: rfqBids } = await supabase.rpc("get_bids_for_rfq", {
+        p_rfq_id: rfqId,
+      });
+      const winBid = (rfqBids || []).find((b: any) => b.id === winnerBidId);
+      if (winBid) {
+        winningPrice = Number(winBid.price);
+        winningSellerName = winBid.seller_name;
+      } else {
+        const { data: singleBid } = await supabase
+          .from("bids")
+          .select("price, seller_id")
+          .eq("id", winnerBidId)
+          .maybeSingle();
 
-    if (winBid) {
-      winningPrice = Number(winBid.price);
-      const { data: winProfile } = await supabase
-        .from("profiles")
-        .select("display_name")
-        .eq("id", winBid.seller_id)
-        .maybeSingle();
-      winningSellerName = winProfile?.display_name || undefined;
+        if (singleBid) {
+          winningPrice = Number(singleBid.price);
+          const { data: winProfile } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("id", singleBid.seller_id)
+            .maybeSingle();
+          winningSellerName = winProfile?.display_name || undefined;
+        }
+      }
     }
 
     const rfq: RFQ = {
@@ -106,7 +118,8 @@ export async function POST(
       location: updatedRfqRow.location,
       status: updatedRfqRow.status,
       created_at: updatedRfqRow.created_at,
-      winner_bid_id: updatedRfqRow.winner_bid_id,
+      winner_bid_id: winnerBidId,
+      winning_bid_id: winnerBidId,
       winning_seller_name: winningSellerName,
       winning_price: winningPrice,
     };

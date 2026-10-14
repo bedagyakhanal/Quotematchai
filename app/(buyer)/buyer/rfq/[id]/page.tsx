@@ -62,8 +62,9 @@ export default function BuyerRfqDetailPage() {
   // Identify winning bid details from loaded bids or rfq
   const winningBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
-    return bids.find((b) => b.id === rfq?.winner_bid_id || b.status === "won") || null;
-  }, [bids, rfq?.winner_bid_id]);
+    const targetBidId = rfq?.winner_bid_id || rfq?.winning_bid_id;
+    return bids.find((b) => (targetBidId && b.id === targetBidId) || b.status === "won") || null;
+  }, [bids, rfq?.winner_bid_id, rfq?.winning_bid_id]);
 
   const winningSellerName =
     winningBid?.seller_name || rfq?.winning_seller_name || "Winning Supplier";
@@ -242,7 +243,7 @@ export default function BuyerRfqDetailPage() {
                 key={bid.id}
                 bid={bid}
                 lowestPrice={lowestPrice}
-                isSelectedWinner={rfq.winner_bid_id === bid.id}
+                isSelectedWinner={(rfq.winner_bid_id || rfq.winning_bid_id) === bid.id || bid.status === "won"}
                 isRfqAwarded={isAwarded}
                 onSelectBid={(b) => setSelectedBidForAward(b)}
               />

@@ -25,6 +25,7 @@ export interface RFQ {
   bid_count?: number;
   lowest_price?: number | null;
   winner_bid_id?: string | null;
+  winning_bid_id?: string | null;
   winning_seller_name?: string | null;
   winning_price?: number | null;
   // Seller inbox specific fields

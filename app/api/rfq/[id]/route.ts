@@ -51,22 +51,32 @@ export async function GET(
 
     let winningSellerName: string | undefined;
     let winningPrice: number | null = null;
+    const winnerBidId = row.winner_bid_id || row.winning_bid_id;
 
-    if (row.winner_bid_id) {
-      const { data: winBid } = await supabase
-        .from("bids")
-        .select("price, seller_id")
-        .eq("id", row.winner_bid_id)
-        .maybeSingle();
-
+    if (winnerBidId) {
+      const { data: rfqBids } = await supabase.rpc("get_bids_for_rfq", {
+        p_rfq_id: row.id,
+      });
+      const winBid = (rfqBids || []).find((b: any) => b.id === winnerBidId);
       if (winBid) {
         winningPrice = Number(winBid.price);
-        const { data: winProfile } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", winBid.seller_id)
+        winningSellerName = winBid.seller_name;
+      } else {
+        const { data: singleBid } = await supabase
+          .from("bids")
+          .select("price, seller_id")
+          .eq("id", winnerBidId)
           .maybeSingle();
-        winningSellerName = winProfile?.display_name || undefined;
+
+        if (singleBid) {
+          winningPrice = Number(singleBid.price);
+          const { data: winProfile } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("id", singleBid.seller_id)
+            .maybeSingle();
+          winningSellerName = winProfile?.display_name || undefined;
+        }
       }
     }
 
@@ -81,7 +91,8 @@ export async function GET(
       created_at: row.created_at,
       bid_count: bidCount,
       lowest_price: lowestPrice,
-      winner_bid_id: row.winner_bid_id,
+      winner_bid_id: winnerBidId || null,
+      winning_bid_id: winnerBidId || null,
       winning_seller_name: winningSellerName,
       winning_price: winningPrice,
     };
