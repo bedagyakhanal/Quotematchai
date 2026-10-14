@@ -61,14 +61,7 @@ function SellerGuard({ children }: { children: React.ReactNode }) {
   }, [isLoading, isAuthenticated, role, isBuyer, router]);
 
   if (isLoading || !isSeller) {
-    return (
-      <>
-        <SellerLoadingSkeleton />
-        <div className="hidden" aria-hidden="true">
-          {children}
-        </div>
-      </>
-    );
+    return <SellerLoadingSkeleton />;
   }
 
   return <>{children}</>;

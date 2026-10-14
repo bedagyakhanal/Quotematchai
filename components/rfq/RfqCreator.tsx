@@ -45,6 +45,8 @@ import { parseRfqText, createRfq } from "@/lib/api/rfq";
 import { AI_PARSE_TIMEOUT_MS, RFQ_TEXT_MAX_LENGTH } from "@/lib/config";
 import { useSpeechInput } from "@/hooks/useSpeechInput";
 import { MicButton } from "@/components/voice/MicButton";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queries";
 import { RFQItem } from "@/types";
 
 const EXAMPLE_PROMPTS = [
@@ -55,6 +57,7 @@ const EXAMPLE_PROMPTS = [
 
 export function RfqCreator() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [state, dispatch] = useReducer(rfqCreatorReducer, initialRfqCreatorState);
 
   // AbortController reference for cancelable parsing
@@ -212,6 +215,9 @@ export function RfqCreator() {
         deliveryDate: state.deliveryDate,
         location: state.location.trim(),
       });
+
+      queryClient.invalidateQueries({ queryKey: queryKeys.myRfqs });
+      queryClient.invalidateQueries({ queryKey: queryKeys.openRfqs });
 
       dispatch({ type: "SUBMIT_SUCCESS", payload: created.id });
       toast.success("Your RFQ is live! Suppliers can now place bids.");

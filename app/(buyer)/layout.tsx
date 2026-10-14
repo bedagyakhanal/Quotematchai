@@ -61,14 +61,7 @@ function BuyerGuard({ children }: { children: React.ReactNode }) {
   }, [isLoading, isAuthenticated, role, isSeller, router]);
 
   if (isLoading || !isBuyer) {
-    return (
-      <>
-        <BuyerLoadingSkeleton />
-        <div className="hidden" aria-hidden="true">
-          {children}
-        </div>
-      </>
-    );
+    return <BuyerLoadingSkeleton />;
   }
 
   return <>{children}</>;

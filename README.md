@@ -1,12 +1,11 @@
 # QuoteMatch — AI-Powered Construction RFQ Marketplace
 
-> **Guiding Principle**: It is the builder's responsibility to make the product frictionless. It is never the user's job to figure out how the app works. Treat every moment of confusion as a bug.
+QuoteMatch streamlines construction material procurement by turning unstructured contractor requests into structured, competitive supplier bidding. The application provides dedicated, role-scoped workflows for general contractors (Buyers) and building material suppliers (Sellers).
 
-QuoteMatch is a high-velocity marketplace connecting **Buyers** (general contractors) with **Sellers** (building material suppliers):
-1. **One-Time Role Onboarding**: Sign in and select Buyer or Seller once. Users never land on a screen not meant for them.
-2. **AI-Structured RFQ Creation**: Speak or type naturally (e.g. *"I need 500 bricks and 10 bags of cement delivered downtown by Friday"*). AI structures items, quantities, delivery date, and location.
-3. **Competitive Supplier Bidding**: Suppliers view open opportunities and place structured bids (price, lead time, notes).
-4. **Intuitive Decision Engine**: Buyers compare bids side-by-side with clear indicators (*Lowest price*, *Fastest*, *Best overall*, *X% above lowest*) and award the winner with one clear, confirmed action.
+1. **Role-Based Workspaces**: Users select Buyer or Seller upon first sign-in, with layout-level routing and database permissions scoped to their workflow.
+2. **AI-Assisted RFQ Structuring**: Dictate or type material requirements naturally. The parsing pipeline extracts line items, quantities, units, locations, and deadlines into an editable draft.
+3. **Supplier Opportunity Marketplace**: Suppliers filter open local requests, review project specifications, and submit formal quotes with pricing, lead times, and fulfillment notes.
+4. **Comparative Bid Analysis**: Buyers evaluate competing bids side-by-side with automated value indicators (*Lowest price*, *Fastest*, *Best overall*, and percentage differences from lowest) and execute atomic contract awards.
 
 ---
 
@@ -138,7 +137,7 @@ You can test resilient UI states at any time by appending `?mockFail=<mode>` to 
 
 ## Edge-Case Verification Checklist
 
-Every edge case specified in the brief has been implemented and tested:
+Every edge case specified in the brief has been implemented and verified via the mock failure-mode system (?mockFail=) and targeted manual testing. See Known Residual Risks for the two items not yet verified against a live, concurrent backend:
 
 1. [x] **Brand-New User Signup**: Land on role onboarding; refresh keeps user on `/onboarding/role` until role is selected.
 2. [x] **Wrong-Role URL Access**: A seller visiting `/buyer` or a buyer visiting `/seller` is redirected with a toast message (*"That page is for buyers/sellers, taking you home"*) with zero flash of wrong content.
@@ -210,6 +209,35 @@ When a supplier edits a bid at the exact moment a buyer awards an RFQ, PostgreSQ
 
 ---
 
+## Post-Submission Fixes Applied
+
+During an architectural self-audit, three functional issues were identified in the client-side state and route guarding layers and resolved:
+
+1. **Route Guard Execution Leak**:
+   - *Issue*: `BuyerGuard` and `SellerGuard` in `app/(buyer)/layout.tsx` and `app/(seller)/layout.tsx` were previously rendering `<div className="hidden" aria-hidden="true">{children}</div>` alongside loading skeletons while resolving profile state. This caused child components to mount and execute React Query hooks (`useBidsQuery`, `useMyRfqsQuery`), triggering unnecessary cross-role network requests that failed with 403 `WRONG_ROLE` before client redirects fired.
+   - *Fix*: Removed the hidden DOM container entirely. The guards now render only the loading skeleton until authentication and role verification succeed, preventing unauthorized child components and their network hooks from mounting.
+
+2. **Stale Cache on RFQ Creation**:
+   - *Issue*: In `components/rfq/RfqCreator.tsx`, submitting an RFQ invoked `createRfq()` directly without invalidating TanStack Query server state. Because `useMyRfqsQuery` had a 10-second `staleTime`, navigating to `/buyer` immediately after creation served cached data, making the new RFQ appear missing for up to 10 seconds.
+   - *Fix*: Added explicit `queryClient.invalidateQueries` calls for `queryKeys.myRfqs` and `queryKeys.openRfqs` immediately following successful creation, ensuring real-time dashboard updates upon navigation.
+
+3. **Masked Bids Query Error State**:
+   - *Issue*: In `app/(buyer)/buyer/rfq/[id]/page.tsx`, the bids display logic evaluated `isLoading` and `!bids || bids.length === 0`, but did not check `isError`. When a network disruption or server error occurred during bids retrieval, `bids` remained `undefined`, misleadingly showing the *"No bids yet"* empty state.
+   - *Fix*: Extracted `isError: bidsError` from `useBidsQuery` and introduced a dedicated error card with an inline retry button, ensuring genuine network/server failures are distinguishable from zero-bid scenarios.
+
+---
+
+## Decision Log
+
+Instead of a multi-turn conversational chatbot or a rigid multi-step wizard, I built a single-step extraction pipeline: rough text or voice goes straight into an editable review form. The pipeline explicitly separates missingFields (gaps that need contractor action) from assumptions (inferred details, like resolving “Friday” to a date), and includes an instant manual fallback that preserves the user’s raw input.
+
+The reasoning: general contractors on active jobsites need speed, not a simulated conversation. A chat interface adds typing friction and latency neither party needs. AI parsing is also inherently probabilistic — models hallucinate plausible-sounding details or fail outright on partial input. By having the backend return partial drafts and giving the frontend a GO_MANUAL escape hatch, a contractor never hits a dead-end error screen or loses dictated requirements because an API timed out or the input was ambiguous.
+
+One deliberate deviation from the brief: I used Google’s Gemini API instead of OpenAI or Anthropic, since it has a usable free tier. For an MVP stage with no revenue, that cost trade-off made sense; a production version would likely re-evaluate against GPT-4o-mini or Claude Haiku for reliability and output quality under load.
+
+With more time, I’d build: (1) line-item bidding and split awards — construction suppliers specialize, so letting buyers award masonry to one vendor and cement to another reflects how procurement actually works and drives better pricing than lump-sum bids; (2) event-driven notifications via Supabase webhooks + Resend/Twilio, since suppliers are in warehouses, not watching browser tabs, and 15-30s polling isn’t how real urgency gets communicated; and (3) custom SMTP for auth, to avoid Supabase’s default rate limits at scale.
+
+---
 
 ## The AI RFQ-Parsing Engine
 
@@ -272,4 +300,3 @@ OPENAI_MODEL=gpt-4o-mini
 # Mock Toggle: set to false to route requests to Next.js API route handlers
 NEXT_PUBLIC_USE_MOCKS=false
 ```
-

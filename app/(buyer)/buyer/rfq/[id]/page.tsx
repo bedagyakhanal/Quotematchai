@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { PageShell } from "@/components/layout/PageShell";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RfqSummaryCard } from "@/components/rfq/RfqSummaryCard";
 import { BidCard } from "@/components/bids/BidCard";
@@ -40,6 +41,7 @@ export default function BuyerRfqDetailPage() {
   const {
     data: bids,
     isLoading: bidsLoading,
+    isError: bidsError,
     refetch: refetchBids,
   } = useBidsQuery(rfqId, {
     isClosed,
@@ -224,8 +226,21 @@ export default function BuyerRfqDetailPage() {
           </div>
         )}
 
+        {/* Error State */}
+        {bidsError && !bidsLoading && (
+          <Card className="border-red-200 bg-red-50/50 p-6 text-center">
+            <h3 className="font-semibold text-red-900">Unable to load supplier quotes</h3>
+            <p className="text-sm text-red-700 mt-1">
+              There was a problem retrieving bids for this request. Please try again.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetchBids()} className="mt-4">
+              Retry
+            </Button>
+          </Card>
+        )}
+
         {/* Zero Bids Empty State */}
-        {!bidsLoading && (!bids || bids.length === 0) && (
+        {!bidsLoading && !bidsError && (!bids || bids.length === 0) && (
           <EmptyState
             icon={<Clock className="h-6 w-6 text-slate-400" />}
             title="No bids yet"
@@ -236,7 +251,7 @@ export default function BuyerRfqDetailPage() {
         )}
 
         {/* Bids List */}
-        {!bidsLoading && sortedBids.length > 0 && (
+        {!bidsLoading && !bidsError && sortedBids.length > 0 && (
           <div className="space-y-3">
             {sortedBids.map((bid) => (
               <BidCard
