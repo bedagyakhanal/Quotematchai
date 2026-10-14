@@ -60,12 +60,23 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 When `NEXT_PUBLIC_USE_MOCKS=true` (the default), all network requests are serviced by the in-memory database (`lib/mocks/db.ts`) and mock handler (`lib/mocks/handlers.ts`) with **300ms–700ms realistic network jitter**.
 
 ### Seed Data
+
+#### In-Memory Mock Accounts (`NEXT_PUBLIC_USE_MOCKS=true`)
 The mock database includes:
 - **1 Buyer**: `Apex Construction` (`buyer@quotematch.test`)
 - **2 Sellers**: `Metro Building Supplies` and `Rapid Logistics & Stone`
 - **RFQ 1 (`rfq_1`)**: Open, 0 bids (for testing zero-state polling and empty UI)
 - **RFQ 2 (`rfq_2`)**: Open, 2 competing bids (Metro has lowest price at $1,150; Rapid has fastest delivery in 1 day)
 - **RFQ 3 (`rfq_3`)**: Already awarded with winner banner (Rapid Logistics won at $450)
+
+#### Live Supabase Test Accounts (`NEXT_PUBLIC_USE_MOCKS=false`)
+When running against the real Supabase backend, sign in using the **Password** tab at [http://localhost:3000/login](http://localhost:3000/login) with:
+
+| Role | Work Email | Password | Display Name / Company |
+| :--- | :--- | :--- | :--- |
+| **Buyer** | `buyer@demo.test` | `user@123` | Demo Buyer (Himalayan Builders) |
+| **Seller 1** | `seller1@demo.test` | `user@123` | Kathmandu Cement & Steel |
+| **Seller 2** | `seller2@demo.test` | `user@123` | Demo Seller 2 |
 
 ### Testing Failure Modes & Edge Cases
 You can test resilient UI states at any time by appending `?mockFail=<mode>` to the URL or via the browser console:
