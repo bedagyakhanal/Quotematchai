@@ -130,8 +130,8 @@ Every edge case specified in the brief has been implemented and tested:
 6. [x] **Double-Click Prevention**: Post RFQ, Submit Bid, and Select Winner buttons lock with spinners upon first click.
 7. [x] **Extreme Data Handling**: Long item names, decimal quantities, and large currency values render with tabular figures and clean text wrapping without breaking layouts.
 8. [x] **Bids Edge Cases**: Zero bids view displays a 15-second auto-refreshing empty state; single-bid view allows direct awarding; ties break cleanly by secondary fields.
-9. [x] **Concurrency & Race Conditions**: If an RFQ is awarded while a seller is typing a bid, the bid form locks with an explanatory banner without discarding the seller's input.
-10. [x] **Multi-Tab Sync**: When a winner is selected in another tab, refocusing the window automatically refetches the awarded status via TanStack Query.
+9. [x] **Concurrency & Race Conditions (Client-Side Reaction)**: If an RFQ is awarded while a seller is typing or submitting a bid, the backend returns `RFQ_CLOSED`. The frontend catches this code gracefully, displays an explanatory banner (*"This RFQ was just awarded. Your bid can't be changed"*), and switches to read-only without discarding typed text. *(Note: True transactional atomicity/locking is guaranteed at the Database/Backend level; the frontend guarantees graceful user-facing reaction).*
+10. [x] **Multi-Tab Sync**: When a winner is selected in another tab, refocusing the window automatically refetches the awarded status via TanStack Query window-focus listeners.
 11. [x] **Responsive Design**: Tested at 375px (iPhone SE), 768px (tablet), and 1280px+ (desktop). All interactive elements respect minimum 44px tap targets.
 12. [x] **Keyboard Navigation & Accessibility**: Full Tab/Enter/Escape operation for modals, form fields, and sort toggles. ARIA labels and live regions included.
 13. [x] **Voice Dictation Fallbacks**: Browser speech capability is feature-detected. Unsupported browsers receive an informative tooltip rather than breaking. Microphone permission denials are handled with clear instructions.
