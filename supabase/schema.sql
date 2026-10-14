@@ -431,3 +431,11 @@ create policy "Buyers can view bids on their RFQs"
       where rfqs.id = bids.rfq_id and rfqs.buyer_id = auth.uid()
     )
   );
+
+-- 6. Table Privileges (Required by PostgreSQL alongside RLS)
+-- ------------------------------------------------------------------------------
+grant usage on schema public to authenticated, anon;
+grant select, insert, update on public.rfqs to authenticated;
+grant select, insert, update on public.bids to authenticated;
+grant select, insert, update on public.profiles to authenticated;
+
