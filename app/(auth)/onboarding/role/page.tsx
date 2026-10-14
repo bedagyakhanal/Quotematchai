@@ -41,12 +41,14 @@ export default function RoleOnboardingPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || hasRole) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-slate-800" />
-          <p className="text-sm text-slate-500">Checking your account...</p>
+          <p className="text-sm text-slate-500">
+            {hasRole ? "Taking you to your dashboard..." : "Checking your account..."}
+          </p>
         </div>
       </div>
     );

@@ -11,9 +11,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { APP_NAME, IS_MOCK_MODE } from "@/lib/config";
 import { useProfile } from "@/hooks/useProfile";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { getProfile } from "@/lib/api/profile";
+import { queryKeys } from "@/lib/queries";
 
 function LoginContent() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const nextUrl = searchParams.get("next") || "/";
   const { profile, role, isAuthenticated, isLoading } = useProfile();
@@ -119,6 +123,8 @@ function LoginContent() {
 
     setIsSubmitting(true);
     try {
+      let destination = nextUrl && nextUrl !== "/" ? nextUrl : null;
+
       if (!IS_MOCK_MODE) {
         const supabase = createBrowserSupabaseClient();
         if (isSignUp) {
@@ -133,23 +139,44 @@ function LoginContent() {
             toast.info("Please verify your email to select a role.");
             return;
           }
+
+          if (!destination) {
+            destination = "/onboarding/role";
+          }
         } else {
-          const { error } = await supabase.auth.signInWithPassword({
+          const { data, error } = await supabase.auth.signInWithPassword({
             email: email.trim(),
             password,
           });
           if (error) throw error;
+
+          if (data?.user?.id && !destination) {
+            const { data: prof } = await supabase
+              .from("profiles")
+              .select("role")
+              .eq("id", data.user.id)
+              .maybeSingle();
+
+            if (prof?.role === "buyer") {
+              destination = "/buyer";
+            } else if (prof?.role === "seller") {
+              destination = "/seller";
+            } else {
+              destination = "/onboarding/role";
+            }
+          }
         }
+
+        queryClient.invalidateQueries({ queryKey: queryKeys.profile });
       } else {
         await new Promise((r) => setTimeout(r, 600));
+        if (!destination) {
+          destination = role === "buyer" ? "/buyer" : role === "seller" ? "/seller" : "/onboarding/role";
+        }
       }
 
       toast.success(isSignUp ? "Account created successfully!" : "Signed in successfully!");
-      if (nextUrl && nextUrl !== "/") {
-        router.push(nextUrl);
-      } else {
-        router.push(role === "buyer" ? "/buyer" : role === "seller" ? "/seller" : "/onboarding/role");
-      }
+      router.push(destination || "/");
     } catch (err: any) {
       setPasswordError(err?.message || "Incorrect email or password. Please try again.");
     } finally {
