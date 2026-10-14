@@ -77,6 +77,26 @@ export async function POST(
       throw fetchError || new ApiAppError("RFQ_NOT_FOUND", "The requested RFQ was not found.", 404);
     }
 
+    // Look up winning bid to get seller_name and price
+    let winningSellerName: string | undefined;
+    let winningPrice: number | null = null;
+
+    const { data: winBid } = await supabase
+      .from("bids")
+      .select("price, seller_id")
+      .eq("id", bidId)
+      .maybeSingle();
+
+    if (winBid) {
+      winningPrice = Number(winBid.price);
+      const { data: winProfile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", winBid.seller_id)
+        .maybeSingle();
+      winningSellerName = winProfile?.display_name || undefined;
+    }
+
     const rfq: RFQ = {
       id: updatedRfqRow.id,
       buyer_id: updatedRfqRow.buyer_id,
@@ -87,6 +107,8 @@ export async function POST(
       status: updatedRfqRow.status,
       created_at: updatedRfqRow.created_at,
       winner_bid_id: updatedRfqRow.winner_bid_id,
+      winning_seller_name: winningSellerName,
+      winning_price: winningPrice,
     };
 
     return jsonSuccess<RFQ>(rfq);

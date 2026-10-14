@@ -59,6 +59,17 @@ export default function BuyerRfqDetailPage() {
     return Math.min(...bids.map((b) => b.price));
   }, [bids]);
 
+  // Identify winning bid details from loaded bids or rfq
+  const winningBid = useMemo(() => {
+    if (!bids || bids.length === 0) return null;
+    return bids.find((b) => b.id === rfq?.winner_bid_id || b.status === "won") || null;
+  }, [bids, rfq?.winner_bid_id]);
+
+  const winningSellerName =
+    winningBid?.seller_name || rfq?.winning_seller_name || "Winning Supplier";
+  const winningPrice =
+    winningBid?.price ?? rfq?.winning_price ?? null;
+
   // Clean sort with deterministic tie-breaking
   const sortedBids = useMemo(() => {
     if (!bids) return [];
@@ -160,12 +171,12 @@ export default function BuyerRfqDetailPage() {
             </div>
             <div>
               <h3 className="font-bold text-emerald-950 text-base">
-                Contract Awarded to {rfq.winning_seller_name}
+                Contract Awarded to {winningSellerName}
               </h3>
               <p className="text-xs sm:text-sm text-emerald-800 mt-0.5">
                 Awarded for a total of{" "}
                 <strong className="tabular-nums font-semibold">
-                  {formatCurrency(rfq.winning_price)}
+                  {formatCurrency(winningPrice)}
                 </strong>
                 . Bidding is now closed for this request.
               </p>

@@ -49,6 +49,27 @@ export async function GET(
         ? Math.min(...bids.map((b) => Number(b.price)))
         : null;
 
+    let winningSellerName: string | undefined;
+    let winningPrice: number | null = null;
+
+    if (row.winner_bid_id) {
+      const { data: winBid } = await supabase
+        .from("bids")
+        .select("price, seller_id")
+        .eq("id", row.winner_bid_id)
+        .maybeSingle();
+
+      if (winBid) {
+        winningPrice = Number(winBid.price);
+        const { data: winProfile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", winBid.seller_id)
+          .maybeSingle();
+        winningSellerName = winProfile?.display_name || undefined;
+      }
+    }
+
     const rfq: RFQ = {
       id: row.id,
       buyer_id: row.buyer_id,
@@ -61,6 +82,8 @@ export async function GET(
       bid_count: bidCount,
       lowest_price: lowestPrice,
       winner_bid_id: row.winner_bid_id,
+      winning_seller_name: winningSellerName,
+      winning_price: winningPrice,
     };
 
     return jsonSuccess<RFQ>(rfq);
