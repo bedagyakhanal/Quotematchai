@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
         data: { user },
       } = await supabase.auth.getUser();
 
-      let destination = next && next !== "/" ? next : null;
+      let destination = next && next !== "/" ? next : type === "recovery" ? "/reset-password" : null;
 
       if (!destination && user) {
         const { data: profile } = await supabase

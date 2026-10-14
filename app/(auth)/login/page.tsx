@@ -36,6 +36,8 @@ function LoginContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [awaitingVerification, setAwaitingVerification] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
   // Cooldown timer for magic link resend
@@ -161,8 +163,51 @@ function LoginContent() {
     } catch (err: any) {
       const msg = err?.message || "Could not send magic link. Please check your connection.";
       if (err?.code === "over_email_send_rate_limit" || msg.toLowerCase().includes("rate limit")) {
-        setEmailError("Email rate limit reached. Please wait a few minutes or switch to the Password tab.");
+        setEmailError("Email rate limit reached. Please wait a few hours or switch to the Password tab.");
         toast.error("Email rate limit reached. You can sign in with your password in the meantime.");
+      } else {
+        setEmailError(msg);
+        toast.error(msg);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailError("");
+
+    if (!email.trim()) {
+      setEmailError("Please enter your email address.");
+      return;
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setEmailError("Please enter a valid email address.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (!IS_MOCK_MODE) {
+        const supabase = createBrowserSupabaseClient();
+        const callbackUrl = new URL("/auth/callback", window.location.origin);
+        callbackUrl.searchParams.set("next", "/reset-password");
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: callbackUrl.toString(),
+        });
+        if (error) throw error;
+      } else {
+        await new Promise((r) => setTimeout(r, 600));
+      }
+
+      setResetEmailSent(true);
+      toast.success("Password reset link sent! Check your inbox.");
+    } catch (err: any) {
+      const msg = err?.message || "Could not send reset link. Please check your connection.";
+      if (err?.code === "over_email_send_rate_limit" || msg.toLowerCase().includes("rate limit")) {
+        setEmailError("Email rate limit reached. Please wait a few hours or try again later.");
+        toast.error("Email rate limit reached. Please try again later.");
       } else {
         setEmailError(msg);
         toast.error(msg);
@@ -247,17 +292,96 @@ function LoginContent() {
             QM
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
-            {isSignUp ? `Create your ${APP_NAME} account` : `Sign in to ${APP_NAME}`}
+            {isForgotPassword
+              ? "Reset your password"
+              : isSignUp
+              ? `Create your ${APP_NAME} account`
+              : `Sign in to ${APP_NAME}`}
           </CardTitle>
           <CardDescription className="text-slate-600 mt-1">
-            {isSignUp
+            {isForgotPassword
+              ? "Enter your email address to receive a password reset link."
+              : isSignUp
               ? "Join contractors and suppliers getting quotes fast."
               : "Enter your email to sign in or get a magic link."}
           </CardDescription>
         </CardHeader>
 
         <CardContent className="pt-2">
-          {awaitingVerification ? (
+          {isForgotPassword ? (
+            resetEmailSent ? (
+              <div className="py-6 text-center space-y-4 animate-in fade-in-50 duration-200">
+                <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-200 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="h-7 w-7" />
+                </div>
+                <div className="space-y-1.5">
+                  <h3 className="font-bold text-slate-900 text-lg">Check your email</h3>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-xs mx-auto">
+                    We sent a password reset link to <strong className="text-slate-800">{email}</strong>.
+                    Click the link in the email to set a new password.
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsForgotPassword(false);
+                      setResetEmailSent(false);
+                    }}
+                    className="w-full"
+                  >
+                    Back to Sign In
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPasswordSubmit} className="space-y-4 pt-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-700">Account Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                    <Input
+                      type="email"
+                      placeholder="you@company.com"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (emailError) setEmailError("");
+                      }}
+                      className="pl-9"
+                      hasError={Boolean(emailError)}
+                      autoComplete="email"
+                      autoFocus
+                    />
+                  </div>
+                  {emailError && <p className="text-xs text-red-600 mt-1">{emailError}</p>}
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full gap-2"
+                  isLoading={isSubmitting}
+                  loadingText="Sending reset link..."
+                >
+                  <span>Send Reset Link</span>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPassword(false);
+                      setEmailError("");
+                    }}
+                    className="text-xs text-slate-500 hover:text-slate-800 font-medium underline"
+                  >
+                    ← Back to Sign In
+                  </button>
+                </div>
+              </form>
+            )
+          ) : awaitingVerification ? (
             <div className="py-6 text-center space-y-4 animate-in fade-in-50 duration-200">
               <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl border border-amber-200 flex items-center justify-center mx-auto">
                 <Mail className="h-7 w-7" />
@@ -386,7 +510,21 @@ function LoginContent() {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-slate-700">Password</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-slate-700">Password</label>
+                      {!isSignUp && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsForgotPassword(true);
+                            setPasswordError("");
+                          }}
+                          className="text-xs text-slate-500 hover:text-slate-900 font-medium hover:underline"
+                        >
+                          Forgot password?
+                        </button>
+                      )}
+                    </div>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                       <Input
@@ -420,31 +558,33 @@ function LoginContent() {
           )}
 
           {/* Single Sign-up vs Sign-in Toggle */}
-          <div className="mt-6 pt-4 border-t border-slate-100 text-center text-xs text-slate-600">
-            {isSignUp ? (
-              <span>
-                Already have an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => setIsSignUp(false)}
-                  className="font-semibold text-slate-900 hover:underline"
-                >
-                  Sign in
-                </button>
-              </span>
-            ) : (
-              <span>
-                Don&apos;t have an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => setIsSignUp(true)}
-                  className="font-semibold text-slate-900 hover:underline"
-                >
-                  Create one now
-                </button>
-              </span>
-            )}
-          </div>
+          {!isForgotPassword && (
+            <div className="mt-6 pt-4 border-t border-slate-100 text-center text-xs text-slate-600">
+              {isSignUp ? (
+                <span>
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setIsSignUp(false)}
+                    className="font-semibold text-slate-900 hover:underline"
+                  >
+                    Sign in
+                  </button>
+                </span>
+              ) : (
+                <span>
+                  Don&apos;t have an account?{" "}
+                  <button
+                    type="button"
+                    onClick={() => setIsSignUp(true)}
+                    className="font-semibold text-slate-900 hover:underline"
+                  >
+                    Create one now
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
