@@ -43,6 +43,8 @@ import {
 } from "./rfqCreatorReducer";
 import { parseRfqText, createRfq } from "@/lib/api/rfq";
 import { AI_PARSE_TIMEOUT_MS, RFQ_TEXT_MAX_LENGTH } from "@/lib/config";
+import { useSpeechInput } from "@/hooks/useSpeechInput";
+import { MicButton } from "@/components/voice/MicButton";
 import { RFQItem } from "@/types";
 
 const EXAMPLE_PROMPTS = [
@@ -65,6 +67,23 @@ export function RfqCreator() {
 
   // Rate limit countdown timer (if rate limited)
   const [rateLimitCountdown, setRateLimitCountdown] = useState<number>(0);
+
+  // Speech Recognition integration
+  const {
+    isSupported: isVoiceSupported,
+    speechState,
+    isListening,
+    interimTranscript,
+    errorMessage: speechError,
+    toggleListening,
+  } = useSpeechInput({
+    onTranscriptAppend: (text) => {
+      dispatch({
+        type: "SET_RAW_TEXT",
+        payload: state.rawText.trim() ? `${state.rawText.trim()} ${text}` : text,
+      });
+    },
+  });
 
   useEffect(() => {
     if (rateLimitCountdown <= 0) return;
@@ -576,9 +595,18 @@ export function RfqCreator() {
   return (
     <Card className="max-w-2xl mx-auto border-slate-200 shadow-sm">
       <CardHeader>
-        <div className="flex items-center gap-2 text-indigo-600 font-semibold text-sm">
-          <Sparkles className="h-4 w-4" />
-          <span>AI Fast Structure</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-indigo-600 font-semibold text-sm">
+            <Sparkles className="h-4 w-4" />
+            <span>AI Fast Structure</span>
+          </div>
+
+          {/* Voice Input Mic Button */}
+          <MicButton
+            isSupported={isVoiceSupported}
+            speechState={speechState}
+            onToggle={toggleListening}
+          />
         </div>
         <CardTitle className="text-xl">Describe what you need</CardTitle>
         <CardDescription>
@@ -587,6 +615,23 @@ export function RfqCreator() {
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {/* Speech Recognition Error Banner */}
+        {speechError && (
+          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800 flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+            <span>{speechError}</span>
+          </div>
+        )}
+
+        {/* Interim Speech Transcription Feedback */}
+        {isListening && (
+          <div className="p-2.5 rounded-lg bg-red-50/60 border border-red-200 text-xs text-red-900 flex items-center gap-2 animate-pulse">
+            <span className="h-2 w-2 rounded-full bg-red-500" />
+            <span className="font-medium">Listening:</span>
+            <span className="italic truncate">{interimTranscript || "Speak now..."}</span>
+          </div>
+        )}
+
         {/* Large Textarea with Character Counter */}
         <div className="space-y-1">
           <Textarea
