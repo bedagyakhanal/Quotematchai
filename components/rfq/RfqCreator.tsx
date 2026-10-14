@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useReducer, useRef, useEffect, useState } from "react";
+import React, { useReducer, useRef, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -68,6 +68,13 @@ export function RfqCreator() {
   // Rate limit countdown timer (if rate limited)
   const [rateLimitCountdown, setRateLimitCountdown] = useState<number>(0);
 
+  const handleTranscriptAppend = useCallback((text: string) => {
+    dispatch({
+      type: "APPEND_RAW_TEXT",
+      payload: text,
+    });
+  }, []);
+
   // Speech Recognition integration
   const {
     isSupported: isVoiceSupported,
@@ -77,12 +84,7 @@ export function RfqCreator() {
     errorMessage: speechError,
     toggleListening,
   } = useSpeechInput({
-    onTranscriptAppend: (text) => {
-      dispatch({
-        type: "SET_RAW_TEXT",
-        payload: state.rawText.trim() ? `${state.rawText.trim()} ${text}` : text,
-      });
-    },
+    onTranscriptAppend: handleTranscriptAppend,
   });
 
   useEffect(() => {

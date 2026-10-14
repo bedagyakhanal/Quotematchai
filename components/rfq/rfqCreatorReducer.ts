@@ -23,6 +23,7 @@ export interface RfqCreatorState {
 
 export type RfqCreatorAction =
   | { type: "SET_RAW_TEXT"; payload: string }
+  | { type: "APPEND_RAW_TEXT"; payload: string }
   | { type: "START_PARSING" }
   | { type: "CANCEL_PARSING" }
   | { type: "PARSE_SUCCESS"; payload: ParsedRfqDraft }
@@ -61,6 +62,19 @@ export function rfqCreatorReducer(
         rawText: action.payload,
         isDirty: Boolean(action.payload.trim()),
       };
+
+    case "APPEND_RAW_TEXT": {
+      const incoming = action.payload.trim();
+      if (!incoming) return state;
+      const newText = state.rawText.trim()
+        ? `${state.rawText.trim()} ${incoming}`
+        : incoming;
+      return {
+        ...state,
+        rawText: newText,
+        isDirty: true,
+      };
+    }
 
     case "START_PARSING":
       return {

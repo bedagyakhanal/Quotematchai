@@ -77,18 +77,37 @@ export function MicButton({
     );
   }
 
+  if (speechState === "processing") {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled
+        className={`gap-1.5 ${className || ""}`}
+      >
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-600" />
+        <span className="text-xs">Processing voice...</span>
+      </Button>
+    );
+  }
+
+  const isError = speechState === "error";
+
   return (
     <Button
       type="button"
       variant="outline"
       size="sm"
       onClick={onToggle}
-      className={`gap-1.5 text-slate-700 hover:text-slate-900 ${className || ""}`}
-      title="Speak to dictate your materials"
+      className={`gap-1.5 text-slate-700 hover:text-slate-900 ${isError ? "border-amber-300 bg-amber-50/50" : ""} ${className || ""}`}
+      title={isError ? "Microphone error. Click to retry." : "Speak to dictate your materials"}
       aria-label="Speak your request with microphone"
     >
-      <Mic className="h-4 w-4 text-slate-600" />
-      <span className="hidden sm:inline text-xs font-medium">Dictate request</span>
+      <Mic className={`h-4 w-4 ${isError ? "text-amber-600" : "text-slate-600"}`} />
+      <span className="hidden sm:inline text-xs font-medium">
+        {isError ? "Retry dictation" : "Dictate request"}
+      </span>
     </Button>
   );
 }
