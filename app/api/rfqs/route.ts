@@ -56,9 +56,9 @@ export async function GET(req: NextRequest) {
         throw error;
       }
 
-      const rfqs: RFQ[] = (rows || []).map((row) => ({
-        id: row.id,
-        buyer_id: row.buyer_id,
+      const rfqs: RFQ[] = (rows || []).map((row: any) => ({
+        id: row.rfq_id || row.id,
+        buyer_id: row.buyer_id || "",
         raw_text: row.raw_text || undefined,
         items: row.items,
         delivery_date: row.delivery_date,

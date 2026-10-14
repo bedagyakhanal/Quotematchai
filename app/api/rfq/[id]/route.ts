@@ -16,7 +16,7 @@ export async function GET(
 
     const { id } = await context.params;
 
-    if (!id || id.trim() === "") {
+    if (!id || id.trim() === "" || id === "undefined") {
       throw new ApiAppError("RFQ_NOT_FOUND", "The requested RFQ was not found.", 404);
     }
 

@@ -17,15 +17,48 @@ export async function GET(
   let userId: string | undefined;
 
   try {
-    const { user, supabase } = await requireRole("buyer");
+    const { requireAuth } = await import("@/lib/server/auth");
+    const { user, supabase } = await requireAuth();
     userId = user.id;
 
     const { id: rfqId } = await context.params;
-    if (!rfqId) {
+    if (!rfqId || rfqId === "undefined") {
       throw new ApiAppError("RFQ_NOT_FOUND", "The requested RFQ was not found.", 404);
     }
 
-    // Call Database Agent RPC: get_bids_for_rfq
+    // Check caller's role
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role === "seller") {
+      // Sellers can view their own bid on this RFQ
+      const { data: rows, error } = await supabase
+        .from("bids")
+        .select("*")
+        .eq("rfq_id", rfqId)
+        .eq("seller_id", user.id);
+
+      if (error) throw error;
+
+      const bids: Bid[] = (rows || []).map((row) => ({
+        id: row.id,
+        rfq_id: row.rfq_id,
+        seller_id: row.seller_id,
+        seller_name: user.user_metadata?.display_name || "You",
+        price: Number(row.price),
+        lead_time_days: Number(row.lead_time_days),
+        notes: row.notes || undefined,
+        status: row.status,
+        created_at: row.created_at,
+      }));
+
+      return jsonSuccess<Bid[]>(bids);
+    }
+
+    // Buyers retrieve all bids submitted for their RFQ
     const { data: rows, error } = await supabase.rpc("get_bids_for_rfq", {
       p_rfq_id: rfqId,
     });
