@@ -10,7 +10,7 @@ export interface RFQItem {
   id?: string;
   name: string;
   quantity: number;
-  unit?: string;
+  unit?: string | null;
 }
 
 export interface RFQ {
@@ -60,11 +60,11 @@ export const rfqItemSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Item name is required"),
   quantity: z.coerce.number().positive("Quantity must be greater than 0"),
-  unit: z.string().optional(),
+  unit: z.string().nullable().optional(),
 });
 
 export const parsedRfqSchema = z.object({
-  items: z.array(rfqItemSchema).min(1, "At least one item is required"),
+  items: z.array(rfqItemSchema).default([]),
   deliveryDate: z.string().optional().default(""),
   location: z.string().optional().default(""),
   missingFields: z.array(z.string()).default([]),
@@ -111,6 +111,7 @@ export type ApiErrorCode =
   | "AI_PARSE_FAILED"
   | "AI_TIMEOUT"
   | "RATE_LIMITED"
+  | "INTERNAL_ERROR"
   | "NETWORK_ERROR"
   | "UNKNOWN_ERROR";
 
