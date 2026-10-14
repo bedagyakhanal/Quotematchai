@@ -3,7 +3,6 @@ import { requireAuth } from "@/lib/server/auth";
 import { jsonSuccess, handleApiError } from "@/lib/server/response";
 import { Profile } from "@/types";
 
-
 export async function GET(req: NextRequest) {
   try {
     const { user, supabase } = await requireAuth();

@@ -2,15 +2,17 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingCart, Store, ArrowRight, AlertCircle, Loader2 } from "lucide-react";
+import { ShoppingCart, Store, ArrowRight, AlertCircle, Loader2, Mail } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Role } from "@/types";
 import { useProfile } from "@/hooks/useProfile";
 import { APP_NAME } from "@/lib/config";
 
 export default function RoleOnboardingPage() {
   const router = useRouter();
-  const { role, hasRole, isLoading, assignRole } = useProfile();
+  const { role, hasRole, isLoading, assignRole, isAuthenticated } = useProfile();
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
 
   // If role is already set, redirect immediately away as per specification
@@ -25,6 +27,11 @@ export default function RoleOnboardingPage() {
   }, [hasRole, role, isLoading, router]);
 
   const handleSelectRole = async (targetRole: Role) => {
+    if (!isAuthenticated) {
+      toast.info("Please verify your email to select a role.");
+      router.push("/login");
+      return;
+    }
     if (selectedRole) return; // Prevent double submit
     setSelectedRole(targetRole);
     try {
@@ -41,6 +48,34 @@ export default function RoleOnboardingPage() {
           <Loader2 className="h-8 w-8 animate-spin text-slate-800" />
           <p className="text-sm text-slate-500">Checking your account...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!isLoading && !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-slate-50">
+        <Card className="w-full max-w-md border-slate-200 shadow-sm text-center p-6 sm:p-8 space-y-5 animate-in fade-in-50 duration-200">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto border border-amber-200">
+            <Mail className="h-7 w-7" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              Verify your email to select a role
+            </h1>
+            <p className="text-slate-600 text-sm leading-relaxed">
+              Please check your inbox and verify your email address before selecting your role on {APP_NAME}. Once verified, sign in to choose your role.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Button
+              onClick={() => router.push("/login")}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white"
+            >
+              Go to Sign In
+            </Button>
+          </div>
+        </Card>
       </div>
     );
   }

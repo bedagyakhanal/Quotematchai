@@ -3,7 +3,6 @@ import { requireRole } from "@/lib/server/auth";
 import { jsonSuccess, handleApiError, ApiAppError } from "@/lib/server/response";
 import { RFQ } from "@/types";
 
-
 export async function GET(req: NextRequest) {
   let userId: string | undefined;
 

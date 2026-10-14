@@ -48,6 +48,7 @@ export type Database = {
           location: string;
           status: RFQStatus;
           winner_bid_id: string | null;
+          winning_bid_id?: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -60,6 +61,7 @@ export type Database = {
           location: string;
           status?: RFQStatus;
           winner_bid_id?: string | null;
+          winning_bid_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -72,6 +74,7 @@ export type Database = {
           location?: string;
           status?: RFQStatus;
           winner_bid_id?: string | null;
+          winning_bid_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -148,6 +151,7 @@ export type Database = {
           location: string;
           status: RFQStatus;
           winner_bid_id: string | null;
+          winning_bid_id?: string | null;
           winning_seller_name: string | null;
           winning_price: number | null;
           bid_count: number;

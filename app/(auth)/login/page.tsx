@@ -31,6 +31,7 @@ function LoginContent() {
   // States
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [awaitingVerification, setAwaitingVerification] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
   // Cooldown timer for magic link resend
@@ -121,11 +122,17 @@ function LoginContent() {
       if (!IS_MOCK_MODE) {
         const supabase = createBrowserSupabaseClient();
         if (isSignUp) {
-          const { error } = await supabase.auth.signUp({
+          const { data, error } = await supabase.auth.signUp({
             email: email.trim(),
             password,
           });
           if (error) throw error;
+
+          if (!data?.session) {
+            setAwaitingVerification(true);
+            toast.info("Please verify your email to select a role.");
+            return;
+          }
         } else {
           const { error } = await supabase.auth.signInWithPassword({
             email: email.trim(),
@@ -168,7 +175,33 @@ function LoginContent() {
         </CardHeader>
 
         <CardContent className="pt-2">
-          {magicLinkSent ? (
+          {awaitingVerification ? (
+            <div className="py-6 text-center space-y-4 animate-in fade-in-50 duration-200">
+              <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl border border-amber-200 flex items-center justify-center mx-auto">
+                <Mail className="h-7 w-7" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="font-bold text-slate-900 text-lg">Verify your email to select a role</h3>
+                <p className="text-xs sm:text-sm text-slate-600 max-w-xs mx-auto">
+                  We&apos;ve sent a verification link to <strong className="text-slate-800">{email}</strong>.
+                  Please check your inbox and verify your email before selecting your role.
+                </p>
+              </div>
+
+              <div className="pt-2 flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setAwaitingVerification(false);
+                    setIsSignUp(false);
+                  }}
+                  className="w-full"
+                >
+                  Return to Sign In
+                </Button>
+              </div>
+            </div>
+          ) : magicLinkSent ? (
             <div className="py-6 text-center space-y-4 animate-in fade-in-50 duration-200">
               <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
                 <CheckCircle2 className="h-6 w-6" />
